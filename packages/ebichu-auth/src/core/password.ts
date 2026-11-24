@@ -14,10 +14,15 @@ const SALT_BYTES = 16;
 const HASH_BITS = 256;
 
 /**
- * Default work factor. Tune it in `createAuth({ passwordIterations })` to fit
- * your Workers CPU budget; 600k costs roughly a few hundred milliseconds.
+ * Default work factor. Kept low because workerd's WebCrypto rejects PBKDF2
+ * iteration counts above 100_000, and Workers Free CPU budgets are small.
+ * Raise it via `createAuth({ passwordIterations })` (up to 100_000) when your
+ * plan allows; the count is embedded in each hash, so existing rows stay valid.
  */
-export const DEFAULT_PBKDF2_ITERATIONS = 600_000;
+export const DEFAULT_PBKDF2_ITERATIONS = 10_000;
+
+/** Upper bound accepted by workerd's WebCrypto implementation. */
+export const MAX_PBKDF2_ITERATIONS = 100_000;
 
 const encoder = new TextEncoder();
 

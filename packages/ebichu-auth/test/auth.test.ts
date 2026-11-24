@@ -6,7 +6,7 @@ import {
   createD1UserRepository,
 } from "../src/d1/index.js";
 
-// Cheap work factor keeps the suite fast; production uses the 600k default.
+// Cheap work factor keeps the suite fast; production defaults to 10k.
 const auth = createAuth({
   users: createD1UserRepository(env.AUTH_DB),
   sessions: createD1SessionRepository(env.AUTH_DB),

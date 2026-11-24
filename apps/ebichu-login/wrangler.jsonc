@@ -24,7 +24,10 @@
   "vars": {
     // Parent domain for the shared session cookie. Set to "" to scope the
     // cookie to the current host (useful for local/preview deployments).
-    "COOKIE_DOMAIN": "ebichu.cc"
+    "COOKIE_DOMAIN": "ebichu.cc",
+    // Workerd rejects PBKDF2 counts above 100000; raise this (max 100000)
+    // when your Workers CPU budget allows.
+    "PASSWORD_ITERATIONS": "10000"
   },
   "routes": [
     {

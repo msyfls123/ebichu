@@ -37,6 +37,10 @@ Production cookies use `@ebichu-cc/auth`'s defaults:
 SameSite=Lax; Max-Age=30d`. Set `COOKIE_DOMAIN=""` in `wrangler.jsonc` vars to
 scope the cookie to the current host (e.g. a preview deployment).
 
+`PASSWORD_ITERATIONS` (also a `vars` entry) controls the PBKDF2 work factor for
+new password hashes. workerd rejects counts above 100000; raise it up to that
+cap when your Workers CPU budget allows.
+
 ## Deployment
 
 ```sh

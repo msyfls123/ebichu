@@ -175,10 +175,11 @@ five minutes to limit writes.
   the same site as `editor.ebichu.cc`. Always guard mutating routes (Hono:
   `sdk.csrf`; Astro: `src/middleware.ts`), never mutate state on GET, and keep
   every subdomain HTTPS-only and free of third-party-controlled content.
-- Passwords use PBKDF2-SHA-256; the default 600k iterations costs a few hundred
-  milliseconds, so lower `passwordIterations` if you are CPU-limited. The work
-  factor is embedded in each hash, so it can be raised without invalidating
-  rows.
+- Passwords use PBKDF2-SHA-256 with 10,000 iterations by default. Workerd's
+  WebCrypto rejects counts above 100,000, so raise `passwordIterations` (or the
+  login worker's `PASSWORD_ITERATIONS` var) up to 100,000 when your CPU budget
+  allows. The count is embedded in each hash, so it can be raised without
+  invalidating rows.
 - Login performs an equivalent hash for unknown e-mails to avoid account
   enumeration through timing.
 - Password changes revoke every session and issue a new one.
