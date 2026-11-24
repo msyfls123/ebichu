@@ -114,3 +114,41 @@ const query = await call(
   { method: "POST", body: JSON.stringify({ sql: "SELECT 1 AS ok" }) },
 );
 console.log(`status=${query.status} ${summarize(query.body)}`);
+
+console.log("\n== workers scripts (deploy permission) ==");
+const scripts = await call(`/accounts/${accountId}/workers/scripts`);
+if (scripts.body?.success) {
+  const names = (scripts.body.result ?? []).map((script) => script.id);
+  console.log(`ok: ${names.length} script(s): ${names.join(", ") || "(none)"}`);
+} else {
+  console.log(`status=${scripts.status} ${summarize(scripts.body)}`);
+}
+
+console.log("\n== zone workers routes (custom domain permission) ==");
+const zones = await call("/zones?name=ebichu.cc");
+if (zones.body?.success && zones.body.result?.[0]) {
+  const zoneId = zones.body.result[0].id;
+  console.log(`zone=ebichu.cc id=${zoneId}`);
+  const routes = await call(`/zones/${zoneId}/workers/routes`);
+  if (routes.body?.success) {
+    const patterns = (routes.body.result ?? []).map((route) => route.pattern);
+    console.log(`routes ok: ${patterns.join(", ") || "(none)"}`);
+  } else {
+    console.log(`routes status=${routes.status} ${summarize(routes.body)}`);
+  }
+
+  console.log("\n== dns record for login.ebichu.cc ==");
+  const dns = await call(`/zones/${zoneId}/dns_records?name=login.ebichu.cc`);
+  if (dns.body?.success) {
+    const records = dns.body.result ?? [];
+    console.log(
+      records.length === 0
+        ? "none (custom domain can be created)"
+        : records.map((record) => `${record.type} ${record.name} -> ${record.content}`).join(" | "),
+    );
+  } else {
+    console.log(`status=${dns.status} ${summarize(dns.body)}`);
+  }
+} else {
+  console.log(`status=${zones.status} ${summarize(zones.body)}`);
+}
