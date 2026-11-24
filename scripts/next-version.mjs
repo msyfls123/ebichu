@@ -2,11 +2,18 @@
 /**
  * Computes the version to publish: never reuses a version already on npm.
  *
+ * Uses the registry HTTP API instead of `npm view`, so the result does not
+ * depend on the runner's npm config or auth state. Transient registry errors
+ * fail the job instead of silently reusing the local version.
+ *
  * Used by the release workflow so every push to `main` can publish without a
  * manual version bump. Once you move to Changesets, delete this script.
  */
-import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
+
+const REGISTRY = "https://registry.npmjs.org";
+const ATTEMPTS = 3;
 
 const [packageJsonPath, packageName] = process.argv.slice(2);
 if (!packageJsonPath || !packageName) {
@@ -41,22 +48,46 @@ function compare(left, right) {
   return left.prerelease < right.prerelease ? -1 : 1;
 }
 
-function latestPublished() {
-  try {
-    const output = execFileSync("npm", ["view", packageName, "version", "--json"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    const parsed = JSON.parse(output || "null");
-    return typeof parsed === "string" ? parsed : null;
-  } catch {
-    return null;
+async function latestPublished() {
+  const url = `${REGISTRY}/${encodeURIComponent(packageName)}`;
+  let lastError;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+      });
+      if (response.status === 404) {
+        return null; // package has never been published
+      }
+      if (!response.ok) {
+        throw new Error(`registry responded ${response.status} ${response.statusText}`);
+      }
+      const metadata = await response.json();
+      const latest = metadata?.["dist-tags"]?.latest;
+      if (typeof latest !== "string") {
+        throw new Error("registry metadata has no dist-tags.latest");
+      }
+      return latest;
+    } catch (error) {
+      lastError = error;
+      if (attempt < ATTEMPTS) {
+        await sleep(2_000 * attempt);
+      }
+    }
   }
+
+  throw new Error(
+    `Could not resolve ${packageName} from npm: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
 }
 
 const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-const published = latestPublished();
-const local = parse(pkg.version);
+const localVersion = pkg.version;
+const published = await latestPublished();
+const local = parse(localVersion);
 const remote = published ? parse(published) : null;
 
 let next;
@@ -66,6 +97,14 @@ if (remote && (!local || compare(local, remote) <= 0)) {
   next = pkg.version;
 }
 
+if (published && next === published) {
+  throw new Error(
+    `${pkg.name}@${next} is already published; bump the version manually`,
+  );
+}
+
 pkg.version = next;
 writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
-console.log(`${packageName}: ${published ?? "(never published)"} -> ${next}`);
+console.log(
+  `${pkg.name}: published=${published ?? "(never)"} local=${localVersion} -> ${next}`,
+);
