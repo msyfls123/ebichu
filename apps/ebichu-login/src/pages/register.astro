@@ -1,0 +1,54 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getAuth } from "../lib/auth";
+import { safeReturnTo } from "../lib/origin";
+import { readSessionToken } from "../lib/session";
+
+const returnTo = safeReturnTo(Astro.url.searchParams.get("return_to"));
+
+const token = readSessionToken(Astro.cookies);
+if (token && (await getAuth().verify(token))) {
+  return Astro.redirect(returnTo);
+}
+
+const loginHref = `/login?return_to=${encodeURIComponent(returnTo)}`;
+---
+
+<Layout title="Sign up">
+  <h1>Create an Ebichu account</h1>
+  <form id="register-form" data-return-to={returnTo}>
+    <label>
+      Email
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        required
+        autofocus
+      />
+    </label>
+    <label>
+      Password (8+ characters)
+      <input
+        type="password"
+        name="password"
+        autocomplete="new-password"
+        minlength="8"
+        required
+      />
+    </label>
+    <p data-error hidden></p>
+    <button type="submit">Create account</button>
+  </form>
+  <p>Already have an account? <a href={loginHref}>Sign in</a></p>
+</Layout>
+
+<script>
+  import { formReturnTo, wireAuthForm } from "../client/forms";
+
+  wireAuthForm({
+    formId: "register-form",
+    endpoint: "/api/register",
+    redirectTo: formReturnTo("register-form"),
+  });
+</script>

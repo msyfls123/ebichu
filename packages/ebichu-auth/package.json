@@ -1,0 +1,60 @@
+{
+  "name": "@ebichu-cc/auth",
+  "version": "0.1.0",
+  "description": "E-mail/password authentication backed by Cloudflare D1",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./d1": {
+      "types": "./dist/d1/index.d.ts",
+      "import": "./dist/d1/index.js"
+    },
+    "./hono": {
+      "types": "./dist/hono/index.d.ts",
+      "import": "./dist/hono/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "dev": "tsc -b --watch",
+    "test": "vitest run",
+    "db:create": "wrangler d1 create auth",
+    "db:migrate": "wrangler d1 migrations apply auth --local",
+    "db:migrate:remote": "wrangler d1 migrations apply auth --remote",
+    "db:clean": "node -e \"require('node:fs').rmSync('.wrangler', { recursive: true, force: true })\"",
+    "typecheck": "tsc -p test/tsconfig.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.9.0",
+    "@cloudflare/workers-types": "^5.20261123.1",
+    "hono": "^4.13.21",
+    "vitest": "^5.1.1",
+    "wrangler": "^4.166.0"
+  }
+}

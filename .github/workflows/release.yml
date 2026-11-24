@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    # npm Trusted Publishing: GitHub's OIDC token is exchanged for a
+    # short-lived publish credential, so no NPM_TOKEN secret is needed.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # Release builds should not use dependency caches.
+          registry-url: https://registry.npmjs.org
+      - name: Ensure npm supports trusted publishing
+        run: npm install --global npm@latest
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ebichu-cc/auth build
+
+      # `npm publish` would otherwise reuse a version that already exists.
+      - name: Bump version
+        run: node scripts/next-version.mjs packages/ebichu-auth/package.json @ebichu-cc/auth
+
+      # npm requires repository.url to match this GitHub repo for OIDC publishing.
+      - name: Set repository metadata
+        run: node scripts/set-repository.mjs packages/ebichu-auth/package.json
+
+      # npm (not pnpm) performs the OIDC exchange for trusted publishing.
+      - name: Publish @ebichu-cc/auth
+        working-directory: packages/ebichu-auth
+        run: npm publish --access public
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Regenerate binding types, then build the SDK and the Astro worker.
+      - run: pnpm --filter @ebichu-cc/login types
+      - run: pnpm build
+
+      # Schema is owned by @ebichu-cc/auth; `migrations_dir` in the worker
+      # config points at packages/ebichu-auth/migrations. Already applied
+      # migrations are skipped, so this is safe to run on every deploy.
+      - name: Apply D1 migrations
+        run: pnpm --filter @ebichu-cc/login exec wrangler d1 migrations apply auth --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy ebichu-login
+        run: pnpm --filter @ebichu-cc/login exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

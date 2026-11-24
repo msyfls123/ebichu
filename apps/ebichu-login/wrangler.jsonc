@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ebichu-login",
+  // Astro 6+ serves the built app through this entrypoint; `astro build`
+  // emits the manifest it loads.
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-11-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      // Same database as every other ebichu worker. Replace the placeholder
+      // with the id printed by `pnpm --filter @ebichu-cc/auth db:create`.
+      "database_name": "auth",
+      "database_id": "c587dd5f-964d-49c4-8175-c6f2904a1e03",
+      // Schema is owned by @ebichu-cc/auth; apply it from this worker.
+      "migrations_dir": "../../packages/ebichu-auth/migrations"
+    }
+  ],
+  "vars": {
+    // Parent domain for the shared session cookie. Set to "" to scope the
+    // cookie to the current host (useful for local/preview deployments).
+    "COOKIE_DOMAIN": "ebichu.cc"
+  },
+  "routes": [
+    {
+      "pattern": "login.ebichu.cc",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

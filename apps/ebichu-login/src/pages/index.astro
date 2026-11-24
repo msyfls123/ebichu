@@ -1,0 +1,38 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getAuth } from "../lib/auth";
+import { readSessionToken } from "../lib/session";
+
+const token = readSessionToken(Astro.cookies);
+const verified = token ? await getAuth().verify(token) : null;
+const loginHref = `/login?return_to=${encodeURIComponent("https://ebichu.cc/")}`;
+---
+
+<Layout title="Account">
+  {
+    verified ? (
+      <>
+        <h1>Signed in</h1>
+        <p>{verified.user.email}</p>
+        <p>
+          Session expires{" "}
+          {new Date(verified.session.expiresAt * 1000).toLocaleString("en-US")}
+        </p>
+        <form method="post" action="/api/logout">
+          <button type="submit">Sign out</button>
+        </form>
+        <p>
+          Go to <a href="https://ebichu.cc">the main site</a> ·
+          <a href="https://editor.ebichu.cc">the editor</a>
+        </p>
+      </>
+    ) : (
+      <>
+        <h1>Ebichu account</h1>
+        <p>
+          You are not signed in. <a href={loginHref}>Sign in</a>
+        </p>
+      </>
+    )
+  }
+</Layout>

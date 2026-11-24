@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ebichu-auth",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      "database_name": "auth",
+      // Shared by every ebichu worker; see apps/ebichu-login/wrangler.jsonc.
+      "database_id": "c587dd5f-964d-49c4-8175-c6f2904a1e03",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
