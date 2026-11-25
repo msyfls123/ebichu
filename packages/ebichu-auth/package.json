@@ -17,6 +17,10 @@
       "types": "./dist/hono/index.d.ts",
       "import": "./dist/hono/index.js"
     },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",

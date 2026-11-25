@@ -1,10 +1,12 @@
 ---
+import { avatarFor } from "@ebichu-cc/auth";
 import Layout from "../layouts/Layout.astro";
 import { getAuth } from "../lib/auth";
 import { readSessionToken } from "../lib/session";
 
 const token = readSessionToken(Astro.cookies);
 const verified = token ? await getAuth().verify(token) : null;
+const avatar = verified ? avatarFor(verified.user.email) : null;
 const loginHref = `/login?return_to=${encodeURIComponent("https://ebichu.cc/")}`;
 ---
 
@@ -12,6 +14,13 @@ const loginHref = `/login?return_to=${encodeURIComponent("https://ebichu.cc/")}`
   {
     verified ? (
       <>
+        <div
+          class="avatar"
+          style={`background-color: ${avatar?.bgColor}`}
+          aria-hidden="true"
+        >
+          {avatar?.initial}
+        </div>
         <h1>Signed in</h1>
         <p>{verified.user.email}</p>
         <p>

@@ -19,6 +19,7 @@ ESM-only, zero runtime dependencies apart from an optional `hono` peer.
 | `@ebichu-cc/auth` | core: register/login/verify/sessions, PBKDF2, tokens, repository ports, shared cookie config | none |
 | `@ebichu-cc/auth/d1` | D1 implementations of the repository ports | Cloudflare D1 |
 | `@ebichu-cc/auth/hono` | `attach` / `require` / `csrf` middlewares | Hono 4 |
+| `@ebichu-cc/auth/client` | browser `authFetch` / `authJson` helpers | none (browser) |
 
 The core never touches HTTP, cookies or `D1Database`, so the same logic can be
 reused with another framework or database adapter later.
@@ -121,6 +122,33 @@ app.use("*", sdk.attach);                       // public route, user if present
 app.get("/api/me", sdk.require, (c) => c.json({ user: c.get("user") }));
 ```
 
+## Usage (browser)
+
+```ts
+import { AuthRequestError, authJson } from "@ebichu-cc/auth/client";
+
+// Same-origin call on any *.ebichu.cc worker
+const { user } = await authJson<{ user: unknown }>("/api/me");
+
+try {
+  await authJson("/api/logout", { method: "POST" });
+} catch (error) {
+  if (error instanceof AuthRequestError && error.status === 401) {
+    // session gone: send the user to login.ebichu.cc
+  }
+}
+```
+
+- **Same-origin** (`editor.ebichu.cc` page → its own `/api/*`): cookies are
+  sent automatically; prefer this, i.e. every worker exposes its own `/api/me`.
+- **Cross-subdomain** (`editor.ebichu.cc` → `login.ebichu.cc/api/*`): `authFetch`
+  sets `credentials: "include"`, and the target must answer with an exact
+  `Access-Control-Allow-Origin: https://editor.ebichu.cc` plus
+  `Access-Control-Allow-Credentials: true` and handle `OPTIONS` preflights.
+  `SameSite=Lax` is enough because `*.ebichu.cc` is the same site.
+- The cookie is `HttpOnly`: never try to read it or move the token into
+  `localStorage`; always ask `/api/me` instead.
+
 ## API
 
 ### Core
@@ -136,9 +164,24 @@ app.get("/api/me", sdk.require, (c) => c.json({ user: c.get("user") }));
 | `auth.revokeAllSessions(userId)` | Forced sign-out for every device. |
 | `auth.pruneExpiredSessions()` | Cleanup for a cron handler. |
 | `hashPassword` / `verifyPassword` / `generateToken` / `hashToken` | Building blocks. |
+| `avatarFor(email)` / `avatarBgColor(email)` / `avatarInitial(email)` | Deterministic default avatar: palette color from an FNV-1a e-mail hash + uppercase initial. |
 
 Failures throw `AuthError` with a stable `code`: `invalid-email`,
 `weak-password`, `email-taken`, `invalid-credentials`, `invalid-session`.
+
+### Default avatars
+
+```ts
+import { avatarFor } from "@ebichu-cc/auth";
+
+const { bgColor, initial } = avatarFor(user.email);
+// <div style={`background:${bgColor}`}>{initial}</div>
+```
+
+The color comes from `AVATAR_PALETTE` (all entries have WCAG AA contrast
+against black text) and is stable for the same e-mail across every surface, so
+login, main site and editor render identical avatars. UI components (React,
+Astro, …) stay out of this package — they only consume these helpers.
 
 ### D1 (`@ebichu-cc/auth/d1`)
 

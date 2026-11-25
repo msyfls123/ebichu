@@ -5,6 +5,14 @@
  * adapters live in `ebichu-auth/d1`, Hono integration in `ebichu-auth/hono`.
  */
 
+export {
+  AVATAR_PALETTE,
+  avatarBgColor,
+  avatarFor,
+  avatarInitial,
+} from "./avatar.js";
+export type { DefaultAvatar } from "./avatar.js";
+
 export { createAuth } from "./core/auth.js";
 export type {
   Auth,
